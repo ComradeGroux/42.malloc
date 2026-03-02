@@ -18,7 +18,10 @@ DIR_S =	srcs/
 CREATE_DIR_O = @mkdir -p objs
 DIR_O =	objs/
 
-SRCS_LIST =	malloc.c
+SRCS_LIST =	malloc.c \
+			free.c \
+			realloc.c \
+			show_alloc_mem.c
 
 SRCS =		${addprefix ${DIR_S}, ${SRCS_LIST}}
 
