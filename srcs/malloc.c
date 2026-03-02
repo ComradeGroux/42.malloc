@@ -89,7 +89,7 @@ static void	split_block(t_heap *heap, t_block *block, size_t size)
 
 static void	alloc_block(t_heap *heap, t_block *block, size_t size)
 {
-	if (block->size >= size + sizeof(t_block) + 16)
+	if (block->size >= size + sizeof(t_block) + MIN_BLOCK_SIZE)
 		split_block(heap, block, size);
 	else
 	{
@@ -103,9 +103,9 @@ void	*malloc(size_t size)
 	if (gMallocState.page_size == 0)
 		gMallocState.page_size = sysconf(_SC_PAGESIZE);
 
-	size_t	res = size % 16;
+	size_t	res = size % MIN_BLOCK_SIZE;
 	if (res != 0)
-		size += 16 - res;
+		size += MIN_BLOCK_SIZE - res;
 
 	t_heap	*heap_head	= NULL;
 	t_block	*block_head	= NULL;

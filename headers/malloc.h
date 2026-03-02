@@ -12,6 +12,8 @@ typedef enum e_heap_group
 	LARGE
 } t_heap_group;
 
+#define MIN_BLOCK_SIZE 16
+
 #define TINY_MAX	128
 #define SMALL_MAX	1024
 

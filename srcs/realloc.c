@@ -21,6 +21,10 @@ void	*realloc(void *ptr, size_t size)
 
 	if (size < block->size)
 	{
+		size_t res = size % MIN_BLOCK_SIZE;
+		if (res != 0)
+			size += MIN_BLOCK_SIZE - res;
+
 		t_block	*next	= block->next;
 		t_block *new	= (t_block *)((char *)ptr + size);
 
@@ -34,6 +38,8 @@ void	*realloc(void *ptr, size_t size)
 		block->next = new;
 
 		t_heap	*heap = retrieve_heap(block);
+		heap->block_count -= 1;
+		heap->free_size += new->size;
 		coalescence(heap, block);
 
 		return ptr;
@@ -41,7 +47,7 @@ void	*realloc(void *ptr, size_t size)
 	else
 	{
 		void	*new_ptr = malloc(size);
-		ft_memcpy(new_ptr, ptr, size);
+		ft_memcpy(new_ptr, ptr, block->size);
 		free(ptr);
 		return new_ptr;
 	}

@@ -16,7 +16,7 @@ void	free(void *ptr)
 	heap->free_size += block->size;
 	coalescence(heap, block);
 
-	if (heap->free_size == (heap->total_size - sizeof(t_heap) - sizeof(t_block)))
+	if (heap->block_count == 1 && heap->blocks->in_use == 0)
 	{
 		if (heap->prev != NULL)
 			heap->prev->next = heap->next;

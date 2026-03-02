@@ -7,8 +7,18 @@ static int	print_mem(t_heap *head)
 	size_t	total = 0;
 	while (head)
 	{
-		ft_printf("%p - %p : %i bytes\n", head, (char *)head + head->total_size, head->total_size);
-		total += head->total_size;
+		t_block	*block = head->blocks;
+		while (block)
+		{
+			if (block->in_use != 0)
+			{
+				void	*start = (char *)block + sizeof(t_block);
+				void	*end = start + block->size;
+				ft_printf("%p - %p : %i bytes\n", start, end, block->size);
+				total += block->size;
+			}
+			block = block->next;
+		}
 		head = head->prev;
 	}
 	return total;
