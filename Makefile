@@ -7,7 +7,8 @@ ifeq ($(HOSTTYPE),)
 	HOSTTYPE := $(shell uname -m)_$(shell uname -s)
 endif
 
-NAME =     libft_malloc_$(HOSTTYPE).so
+NAME =		libft_malloc_$(HOSTTYPE).so
+LIBNAME =	libft_malloc.so
 
 CC =         gcc
 CFLAGS =     -Wall -Wextra -Werror -O3 -fPIC
@@ -21,7 +22,8 @@ DIR_O =	objs/
 SRCS_LIST =	malloc.c \
 			free.c \
 			realloc.c \
-			show_alloc_mem.c
+			show_alloc_mem.c \
+			utils.c
 
 SRCS =		${addprefix ${DIR_S}, ${SRCS_LIST}}
 
@@ -38,6 +40,7 @@ ${NAME}: ${LIBFT} ${OBJS}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} Objects were created${GREY}"
 	${CC} -shared ${OBJS} ${LIBS} -o ${NAME}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} created !"
+	ln -sf ${NAME} ${LIBNAME}
 
 ${LIBFT}:
 	@echo "[$(GREENGREEN)${NAME}$(RESET)]: Creating Libft...${GREY}"
@@ -58,8 +61,6 @@ clean:
 	@echo "[$(RED)${NAME}$(RESET)]: ${NAME} Objects were cleaned${GREY}"
 
 libclean:
-	@echo "${RESET}[$(RED)${NAME}$(RESET)]: Cleaning MLX...${GREY}"
-	@echo "${RESET}[$(RED)${NAME}$(RESET)]: MLX Objects were cleaned"
 	@echo "${RESET}[$(RED)${NAME}$(RESET)]: Cleaning Libft...${GREY}"
 	${MAKE} -sC ${DIR_LIBFT} fclean
 	@echo "${RESET}[$(RED)${NAME}$(RESET)]: Libft Objects were cleaned"
@@ -67,7 +68,8 @@ libclean:
 fclean: clean libclean
 	@echo "${RESET}[$(RED)${NAME}$(RESET)]: Cleaning ${NAME}...${GREY}"
 	${RM} ${NAME}
-	@echo "${RESET}[$(RED)${NAME}$(RESET)]: ${NAME} Executable was cleaned"
+	${RM} ${LIBNAME}
+	@echo "${RESET}[$(RED)${NAME}$(RESET)]: ${NAME} was cleaned"
 
 re: fclean all
 

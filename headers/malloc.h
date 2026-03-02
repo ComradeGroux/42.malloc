@@ -49,4 +49,7 @@ void	free(void *ptr);
 void	*malloc(size_t size);
 void	*realloc(void *ptr, size_t size);
 
+t_heap	*retrieve_heap(t_block *block);
+void	coalescence(t_heap *heap, t_block *block);
+
 void	show_alloc_mem(void);
