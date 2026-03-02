@@ -114,7 +114,14 @@ void	*malloc(size_t size)
 	else if (size <= SMALL_MAX)
 		heap_head = gMallocState.small;
 	else
-		heap_head = gMallocState.large;
+	{
+		heap_head = create_heap(LARGE, size);
+		if (heap_head == NULL)
+			return NULL;
+		block_head = heap_head->blocks;
+		alloc_block(heap_head, block_head, size);
+		return (char *)block_head + sizeof(t_block);
+	}
 
 	while (heap_head)
 	{
@@ -141,8 +148,6 @@ void	*malloc(size_t size)
 			heap_head = create_heap(TINY, size);
 		else if (size <= SMALL_MAX)
 			heap_head = create_heap(SMALL, size);
-		else
-			heap_head = create_heap(LARGE, size);
 
 		if (heap_head == NULL)
 			return NULL;
