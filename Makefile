@@ -10,7 +10,7 @@ endif
 NAME =     libft_malloc_$(HOSTTYPE).so
 
 CC =         gcc
-CFLAGS =     -Wall -Wextra -Werror -O3
+CFLAGS =     -Wall -Wextra -Werror -O3 -fPIC
 RM =         rm -rf
 
 DIR_H = headers/
@@ -18,7 +18,7 @@ DIR_S =	srcs/
 CREATE_DIR_O = @mkdir -p objs
 DIR_O =	objs/
 
-SRCS_LIST =	
+SRCS_LIST =	malloc.c
 
 SRCS =		${addprefix ${DIR_S}, ${SRCS_LIST}}
 
@@ -33,7 +33,7 @@ LIBS = ${FT_LNK}
 
 ${NAME}: ${LIBFT} ${OBJS}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} Objects were created${GREY}"
-	${CC} $(CFLAGS) -shared ${OBJS} ${LIBS} -o ${NAME}
+	${CC} -shared ${OBJS} ${LIBS} -o ${NAME}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} created !"
 
 ${LIBFT}:
