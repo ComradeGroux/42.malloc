@@ -23,6 +23,7 @@ static t_heap	*create_heap(t_heap_group group, size_t size_required)
 		default:
 		{
 			head = &gMallocState.large;
+			size_required += sizeof(t_heap) + sizeof(t_block);
 			size_t	res = size_required % gMallocState.page_size;
 			if (res != 0)
 				size = size_required + (gMallocState.page_size - res);
