@@ -63,8 +63,38 @@ static t_heap	*create_heap(t_heap_group group, size_t size_required)
 	block->in_use	= 0;
 
 	new->blocks = block;
-	
+
 	return new;
+}
+
+static void	split_block(t_heap *heap, t_block *block, size_t size)
+{
+	t_block	*new = (t_block *)((char *)block + sizeof(t_block) + size);
+	new->prev	= block;
+	new->next	= block->next;
+	new->size	= block->size - sizeof(t_block) - size;
+	new->in_use	= 0;
+
+	block->next		= new;
+	block->size		= size;
+	block->in_use	= 1;
+
+	if (new->next != NULL)
+		new->next->prev = new;
+
+	heap->block_count += 1;
+	heap->free_size -= (size + sizeof(t_block));
+}
+
+static void	alloc_block(t_heap *heap, t_block *block, size_t size)
+{
+	if (block->size >= size + sizeof(t_block) + 16)
+		split_block(heap, block, size);
+	else
+	{
+		block->in_use = 1;
+		heap->free_size -= block->size;
+	}
 }
 
 void	*malloc(size_t size)
@@ -76,8 +106,8 @@ void	*malloc(size_t size)
 	if (res != 0)
 		size += 16 - res;
 
-	t_heap	*heap_head;
-	t_block	*block_head;
+	t_heap	*heap_head	= NULL;
+	t_block	*block_head	= NULL;
 	if (size <= TINY_MAX)
 		heap_head = gMallocState.tiny;
 	else if (size <= SMALL_MAX)
@@ -92,18 +122,15 @@ void	*malloc(size_t size)
 			block_head = heap_head->blocks;
 			while (block_head)
 			{
-				if (block_head->in_use == 0)
+				if (block_head->in_use == 0 && block_head->size >= size)
 				{
-					if (block_head->size >= size)
-						break;
-					else
-					{
-						// Check if we have enough continous free memory
-					}
+					alloc_block(heap_head, block_head, size);
+					break;
 				}
 				block_head = block_head->next;
 			}
-			break;
+			if (block_head != NULL)
+				break;
 		}
 		heap_head = heap_head->next;
 	}
@@ -115,15 +142,13 @@ void	*malloc(size_t size)
 			heap_head = create_heap(SMALL, size);
 		else
 			heap_head = create_heap(LARGE, size);
+
+		if (heap_head == NULL)
+			return NULL;
+
+		block_head = heap_head->blocks;
+		alloc_block(heap_head, block_head, size);
 	}
 
-	return NULL;
-	
-/*
-	→ chercher dans la liste libre un bloc suffisant
-      → trouvé : le splitter si besoin, le marquer occupé, retourner ptr
-      → pas trouvé : appeler mmap pour de nouvelles pages
-                     ajouter le nouveau bloc à la liste
-                     recommencer
-*/
+	return (char *)block_head + sizeof(t_block);
 }
