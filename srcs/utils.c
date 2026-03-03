@@ -1,4 +1,4 @@
-#include "malloc.h"
+#include "intern_malloc.h"
 
 extern t_malloc_state gMallocState;
 

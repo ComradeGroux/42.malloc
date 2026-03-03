@@ -49,6 +49,9 @@ ${LIBFT}:
 
 all: ${NAME}
 
+test: ${NAME}
+	gcc -Wall -Wextra -Werror -I${DIR_H} -Wl,-rpath,'$$ORIGIN' test.c -L. -lft_malloc -o test
+		
 ${DIR_O}%.o:${DIR_S}%.c
 	@printf "\033[38;5;240m"
 	@mkdir -p ${DIR_O}
