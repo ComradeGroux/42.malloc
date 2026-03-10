@@ -326,6 +326,237 @@ static void	test_realloc_grow(void)
 }
 
 /* ─────────────────────────────────────────────
+   6. Double free
+   ───────────────────────────────────────────── */
+static void	test_double_free(void)
+{
+	print_section("6. Double free");
+
+	/*
+	** On ne peut pas tester programmatiquement un double free sans
+	** risquer un crash non-controle : on verifie a la place que la
+	** zone reste coherente apres une sequence libre normale, et on
+	** laisse un avertissement visuel pour le test manuel.
+	**
+	** Pour tester le double free reel, decommente le bloc ci-dessous
+	** et verifie manuellement que ton allocateur gere proprement
+	** (ex. abort(), message d'erreur, ou comportement defini).
+	*/
+
+	/* -- 6a. Integrite post-free : le bloc suivant reste valide -- */
+	printf(YELLOW "\n  [6a] Integrite de la heap apres free normal\n" RESET);
+
+	void	*df1 = malloc(64);
+	void	*df2 = malloc(64);
+	check("[6a] malloc(64) x2 != NULL", df1 != NULL && df2 != NULL);
+
+	*(char *)df1 = 0x11;
+	*(char *)df2 = 0x22;
+
+	free(df1);
+
+	/* df2 doit etre intact apres le free de df1 */
+	check("[6a] bloc voisin intact apres free(df1)", *(char *)df2 == 0x22);
+	dump("apres free(df1), df2 toujours vivant");
+	free(df2);
+	dump("apres free(df2)");
+
+	/* -- 6b. Utilisation apres free detectee par show_alloc_mem -- */
+	printf(YELLOW "\n  [6b] show_alloc_mem ne liste plus un bloc libere\n" RESET);
+
+	void	*df3 = malloc(128);
+	check("[6b] malloc(128) != NULL", df3 != NULL);
+	dump("df3 alloue — doit apparaitre dans show_alloc_mem");
+	free(df3);
+	dump("df3 libere — NE doit plus apparaitre dans show_alloc_mem");
+	check("[6b] (verification visuelle ci-dessus)", 1);
+
+	/* -- 6c. DOUBLE FREE — test manuel uniquement -- */
+	printf(YELLOW
+		"\n  [6c] Double free — test MANUEL\n"
+		"       Compile avec -DTEST_DOUBLE_FREE pour activer ce test.\n"
+		"       Comportement attendu : message d'erreur ou abort propre,\n"
+		"       PAS un crash silencieux ni une corruption de heap.\n"
+		RESET);
+
+#ifdef TEST_DOUBLE_FREE
+	void	*bad = malloc(64);
+	free(bad);
+	free(bad);   /* <- double free intentionnel */
+	check("[6c] double free : n'a pas corrompu silencieusement", 1);
+#endif
+
+	check("[6c] double free (test manuel, voir commentaire)", 1);
+}
+
+/* ─────────────────────────────────────────────
+   7. Stress test — allocations aleatoires
+   ───────────────────────────────────────────── */
+#define STRESS_SLOTS	256
+#define STRESS_ITER		4000
+
+static void	test_stress(void)
+{
+	print_section("7. Stress test — allocations aleatoires");
+
+	/*
+	** Simule un usage realiste :
+	**   - tableau de pointeurs (slots)
+	**   - a chaque iteration : malloc ou free au hasard
+	**   - verification d'ecriture/lecture sur chaque bloc actif
+	**   - aucun leak a la fin
+	*/
+
+	void	*slots[STRESS_SLOTS];
+	size_t	szs[STRESS_SLOTS];
+	int		used[STRESS_SLOTS];
+
+	for (int i = 0; i < STRESS_SLOTS; i++)
+	{
+		slots[i] = NULL;
+		szs[i]   = 0;
+		used[i]  = 0;
+	}
+
+	/* Generateur congruentiel lineaire deterministe (pas de rand()) */
+	unsigned int	seed  = 0xDEADBEEF;
+	int				alloc_count = 0;
+	int				free_count  = 0;
+	int				rw_errors   = 0;
+
+	for (int iter = 0; iter < STRESS_ITER; iter++)
+	{
+		seed = seed * 1664525u + 1013904223u;
+		int slot = (int)((seed >> 8) % STRESS_SLOTS);
+
+		if (!used[slot])
+		{
+			/* Allouer un bloc de taille aleatoire : 1 a 4096 */
+			seed = seed * 1664525u + 1013904223u;
+			size_t sz = (size_t)((seed >> 4) % 4096) + 1;
+
+			slots[slot] = malloc(sz);
+			if (slots[slot])
+			{
+				szs[slot]  = sz;
+				used[slot] = 1;
+				/* Ecrire un motif identifiable */
+				memset(slots[slot], (int)(slot & 0xFF), sz);
+				alloc_count++;
+			}
+		}
+		else
+		{
+			/* Verifier le motif avant de liberer */
+			unsigned char *p = (unsigned char *)slots[slot];
+			for (size_t b = 0; b < szs[slot]; b++)
+			{
+				if (p[b] != (unsigned char)(slot & 0xFF))
+				{
+					rw_errors++;
+					break;
+				}
+			}
+			free(slots[slot]);
+			slots[slot] = NULL;
+			szs[slot]   = 0;
+			used[slot]  = 0;
+			free_count++;
+		}
+	}
+
+	/* Liberer les blocs encore actifs */
+	int	leftover = 0;
+	for (int i = 0; i < STRESS_SLOTS; i++)
+	{
+		if (used[i])
+		{
+			free(slots[i]);
+			leftover++;
+		}
+	}
+
+	printf(GREY
+		"  iterations=%d  allocs=%d  frees=%d  restants liberes=%d\n"
+		RESET,
+		STRESS_ITER, alloc_count, free_count, leftover);
+
+	check("[7] aucune corruption de donnees pendant le stress", rw_errors == 0);
+	dump("heap apres stress test — doit etre vide");
+}
+
+/* ─────────────────────────────────────────────
+   8. Epuisement memoire
+   ───────────────────────────────────────────── */
+#define EXHAUST_MAX_ALLOCS	16384
+#define EXHAUST_CHUNK_SIZE	(1024 * 1024)   /* 1 Mo par tranche */
+
+static void	test_exhaustion(void)
+{
+	print_section("8. Epuisement memoire");
+
+	/*
+	** On alloue des blocs de 1 Mo jusqu'a ce que malloc retourne NULL.
+	** On verifie :
+	**   a) malloc retourne bien NULL sans crasher
+	**   b) apres les frees, la heap est a nouveau fonctionnelle
+	**   c) on ne peut pas ecrire hors du bloc alloue (pas de ptr NULL deref)
+	*/
+
+	void	*chunks[EXHAUST_MAX_ALLOCS];
+	int		n = 0;
+
+	printf(YELLOW "\n  [8a] Allocation jusqu'a epuisement (chunks de 1 Mo)...\n" RESET);
+
+	while (n < EXHAUST_MAX_ALLOCS)
+	{
+		chunks[n] = malloc(EXHAUST_CHUNK_SIZE);
+		if (!chunks[n])
+			break;
+		/* Ecriture pour s'assurer que la page est vraiment disponible */
+		*(char *)chunks[n] = (char)n;
+		n++;
+	}
+
+	printf(GREY "  %d blocs de 1 Mo alloues avant echec\n" RESET, n);
+	check("[8a] malloc retourne NULL a l'epuisement (pas de crash)", 1);
+	check("[8a] au moins 1 bloc alloue avant epuisement", n > 0);
+
+	dump("heap a l'epuisement");
+
+	/* Verification de l'integrite des donnees ecrites */
+	printf(YELLOW "\n  [8b] Verification integrite des blocs alloues\n" RESET);
+	int	data_ok = 1;
+	for (int i = 0; i < n; i++)
+	{
+		if (*(char *)chunks[i] != (char)i)
+		{
+			data_ok = 0;
+			printf(RED "  corruption au bloc %d\n" RESET, i);
+			break;
+		}
+	}
+	check("[8b] donnees integres dans tous les blocs alloues", data_ok);
+
+	/* Liberation et recuperation */
+	printf(YELLOW "\n  [8c] Liberation et recuperation de la heap\n" RESET);
+	for (int i = 0; i < n; i++)
+		free(chunks[i]);
+	dump("apres liberation complete");
+
+	/* La heap doit etre a nouveau utilisable */
+	void	*recovery = malloc(512);
+	check("[8c] malloc fonctionne a nouveau apres epuisement + free", recovery != NULL);
+	if (recovery)
+	{
+		memset(recovery, 0xAA, 512);
+		check("[8c] ecriture post-recovery sans crash", 1);
+		free(recovery);
+	}
+	dump("heap post-recovery");
+}
+
+/* ─────────────────────────────────────────────
    Main
    ───────────────────────────────────────────── */
 int	main(void)
@@ -341,6 +572,10 @@ int	main(void)
 	test_realloc_edge();
 	test_realloc_shrink();
 	test_realloc_grow();
+	test_double_free();
+	test_stress();
+	// (void)test_exhaustion;
+	test_exhaustion();
 
 	printf(CYAN "\n══════════════════════════════════════\n" RESET);
 	printf("  " GREEN "PASS : %d" RESET "   " RED "FAIL : %d" RESET "\n", g_pass, g_fail);

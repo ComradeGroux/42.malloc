@@ -1,6 +1,5 @@
 #pragma once
 
-#include "libft.h"
 #include "malloc.h"
 
 #include <stdlib.h>

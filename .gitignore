@@ -9,7 +9,7 @@
 
 # Linker output
 *.ilk
-*.map
+# *.map
 *.exp
 
 # Precompiled Headers
@@ -54,5 +54,6 @@ dkms.conf
 # debug information files
 *.dwo
 
-
 .vscode
+test
+*.txt

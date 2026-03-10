@@ -1,4 +1,6 @@
 #include "intern_malloc.h"
+#include <unistd.h>
+#include "libft.h"
 
 extern t_malloc_state	gMallocState;
 

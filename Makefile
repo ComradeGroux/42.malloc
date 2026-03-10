@@ -14,6 +14,8 @@ CC =         gcc
 CFLAGS =     -Wall -Wextra -Werror -O3 -fPIC
 RM =         rm -rf
 
+LINKER_SCRIPT =	-Wl,--version-script=version.map
+
 DIR_H = headers/
 DIR_S =	srcs/
 CREATE_DIR_O = @mkdir -p objs
@@ -38,7 +40,7 @@ LIBS = ${FT_LNK}
 
 ${NAME}: ${LIBFT} ${OBJS}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} Objects were created${GREY}"
-	${CC} -shared ${OBJS} ${LIBS} -o ${NAME}
+	${CC} -shared ${OBJS} ${LIBS} -o ${NAME} ${LINKER_SCRIPT}
 	@echo "$(RESET)[$(GREENGREEN)${NAME}$(RESET)]: ${NAME} created !"
 	ln -sf ${NAME} ${LIBNAME}
 
@@ -51,6 +53,10 @@ all: ${NAME}
 
 test: ${NAME}
 	gcc -Wall -Wextra -Werror -I${DIR_H} -Wl,-rpath,'$$ORIGIN' test.c -L. -lft_malloc -o test
+
+test_double: ${NAME}
+	gcc -Wall -Wextra -DTEST_DOUBLE_FREE -I${DIR_H} -Wl,-rpath,'$$ORIGIN' test.c -L. -lft_malloc -o test
+
 		
 ${DIR_O}%.o:${DIR_S}%.c
 	@printf "\033[38;5;240m"

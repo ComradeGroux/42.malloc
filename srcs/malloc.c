@@ -1,4 +1,5 @@
 #include "intern_malloc.h"
+#include <unistd.h>
 
 t_malloc_state	gMallocState = { NULL, NULL, NULL, 0};
 
