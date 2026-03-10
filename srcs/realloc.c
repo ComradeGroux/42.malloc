@@ -38,9 +38,9 @@ void	*realloc(void *ptr, size_t size)
 		block->next = new;
 
 		t_heap	*heap = retrieve_heap(block);
-		heap->block_count -= 1;
+		heap->block_count += 1;
 		heap->free_size += new->size;
-		coalescence(heap, block);
+		coalescence(heap, new);
 
 		return ptr;
 	}
