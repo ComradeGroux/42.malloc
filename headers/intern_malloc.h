@@ -30,6 +30,7 @@ typedef struct s_heap
 	size_t			total_size;
 	size_t			free_size;
 	size_t			block_count;
+	__uint8_t		_padding;
 } t_heap;
 
 typedef struct s_block
