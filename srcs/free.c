@@ -18,18 +18,38 @@ void	free(void *ptr)
 
 	if (heap->block_count == 1 && heap->blocks->in_use == 0)
 	{
-		if (heap->prev != NULL)
-			heap->prev->next = heap->next;
-		if (heap->next != NULL)
-			heap->next->prev = heap->prev;
+		t_heap**	head = NULL;
+		if (heap->group == TINY)
+			head = &gMallocState.tiny;
+		else if (heap->group == SMALL)
+			head = &gMallocState.small;
+		else
+			head = &gMallocState.large;
 
-		if (heap->group == TINY && gMallocState.tiny == heap)
-			gMallocState.tiny = heap->next;
-		else if (heap->group == SMALL && gMallocState.small == heap)
-			gMallocState.small = heap->next;
-		else if (heap->group == LARGE && gMallocState.large == heap)
-			gMallocState.large = heap->next;
+		t_heap*	cursor = *head;
+		int		empty = 0;
+		while (cursor)
+		{
+			if (cursor != heap && cursor->block_count == 1 && cursor->blocks->in_use == 0)
+				empty++;
+			cursor = cursor->next;
+		}
 
-		munmap(heap, heap->total_size);
+		if (empty != 0)
+		{
+			if (heap->prev != NULL)
+				heap->prev->next = heap->next;
+			if (heap->next != NULL)
+				heap->next->prev = heap->prev;
+
+			if (heap->group == TINY && gMallocState.tiny == heap)
+				gMallocState.tiny = heap->next;
+			else if (heap->group == SMALL && gMallocState.small == heap)
+				gMallocState.small = heap->next;
+			else if (heap->group == LARGE && gMallocState.large == heap)
+				gMallocState.large = heap->next;
+
+			munmap(heap, heap->total_size);
+		}
 	}
 }
