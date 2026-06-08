@@ -1,5 +1,7 @@
 #include "intern_malloc.h"
 #include <unistd.h>
+#include <errno.h>
+#include <sys/resource.h>
 
 t_malloc_state	gMallocState = { NULL, NULL, NULL, 0};
 
@@ -32,6 +34,13 @@ static t_heap	*create_heap(t_heap_group group, size_t size_required)
 				size = size_required;
 			break;
 		}
+	}
+
+	struct rlimit	rl;
+	if (getrlimit(RLIMIT_AS, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY && size > rl.rlim_cur)
+	{
+		errno = ENOMEM;
+		return NULL;
 	}
 
 	ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
